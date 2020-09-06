@@ -26,6 +26,7 @@ Prometheus's main distinguishing features as compared to other monitoring system
 - multiple modes of **graphing and dashboarding support**
 - support for hierarchical and horizontal **federation**
 
+
 ## Architecture overview
 
 ![](https://cdn.jsdelivr.net/gh/prometheus/prometheus@c34257d069c630685da35bcef084632ffd5d6209/documentation/images/architecture.svg)
