@@ -474,6 +474,13 @@ func (c *LeveledCompactor) Write(dest string, b BlockReader, mint, maxt int64, p
 		MinTime: mint,
 		MaxTime: maxt,
 	}
+	level.Info(c.logger).Log(
+    		"msg", "start write block",
+    		"mint", meta.MinTime,
+    		"maxt", meta.MaxTime,
+    		"ulid", meta.ULID,
+    		"duration", time.Since(start),
+    	)
 	meta.Compaction.Level = 1
 	meta.Compaction.Sources = []ulid.ULID{uid}
 
