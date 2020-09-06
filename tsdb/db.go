@@ -710,7 +710,7 @@ type dbAppender struct {
 }
 
 func (a dbAppender) Commit() error {
-    level.Info(db.logger).Log("msg", "db.Commit")
+    level.Info(a.db.logger).Log("msg", "db.Commit")
 	err := a.Appender.Commit()
 
 	// We could just run this check every few minutes practically. But for benchmarks

@@ -979,7 +979,7 @@ func (a *initAppender) AddFast(ref uint64, t int64, v float64) error {
 }
 
 func (a *initAppender) Commit() error {
-    level.Info(h.logger).Log("msg", "db.head.Commit")
+    level.Info(a.head.logger).Log("msg", "db.head.Commit")
 	if a.app == nil {
 		return nil
 	}
