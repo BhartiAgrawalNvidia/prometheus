@@ -685,7 +685,7 @@ func (db *DB) run() {
 					level.Error(db.logger).Log("msg", "compaction failed", "err", err)
 					backoff = exponential(backoff, 1*time.Second, 1*time.Minute)
 				} else {
-				    level.Info(db.logger).Log("msg", "debug - db.run compact backoff")
+				    level.Info(db.logger).Log("msg", "debug - db.run compact done")
 					backoff = 0
 				}
 			} else {
