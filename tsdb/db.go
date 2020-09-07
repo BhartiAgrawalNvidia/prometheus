@@ -716,7 +716,6 @@ func (a dbAppender) Commit() error {
 	// We could just run this check every few minutes practically. But for benchmarks
 	// and high frequency use cases this is the safer way.
 	if a.db.head.compactable() {
-	    level.Info(a.db.logger).Log("msg", "debug - db.Commit setup compactc")
 		select {
 		case a.db.compactc <- struct{}{}:
 		default:
@@ -750,7 +749,7 @@ func (db *DB) Compact() (err error) {
 		default:
 		}
 		if !db.head.compactable() {
-		    level.Info(db.logger).Log("msg", "debug - db.Compact not compactable")
+		    level.Info(db.logger).Log("msg", "debug - db.Compact head not compactable")
 			break
 		}
 		mint := db.head.MinTime()
