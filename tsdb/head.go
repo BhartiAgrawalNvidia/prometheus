@@ -635,7 +635,7 @@ Outer:
 // limits the ingested samples to the head min valid time.
 func (h *Head) Init(minValidTime int64) error {
 	h.minValidTime = minValidTime
-	level.Info(h.logger).Log("msg", "db.head.Init", "minValidTime", minValidTime)
+	level.Info(h.logger).Log("msg", "debug - db.head.Init", "minValidTime", minValidTime)
 	defer h.postings.EnsureOrder()
 	defer h.gc() // After loading the wal remove the obsolete data from the head.
 
@@ -762,7 +762,7 @@ func (h *Head) removeCorruptedMmappedChunks(err error) map[uint64][]*mmappedChun
 
 // Truncate removes old data before mint from the head.
 func (h *Head) Truncate(mint int64) (err error) {
-    level.Info(h.logger).Log("msg", "db.head.Truncate")
+    level.Info(h.logger).Log("msg", "debug - db.head.Truncate")
 	defer func() {
 		if err != nil {
 			h.metrics.headTruncateFail.Inc()
@@ -979,7 +979,6 @@ func (a *initAppender) AddFast(ref uint64, t int64, v float64) error {
 }
 
 func (a *initAppender) Commit() error {
-    level.Info(a.head.logger).Log("msg", "db.head.Commit")
 	if a.app == nil {
 		return nil
 	}
@@ -995,7 +994,6 @@ func (a *initAppender) Rollback() error {
 
 // Appender returns a new Appender on the database.
 func (h *Head) Appender() storage.Appender {
-    level.Info(h.logger).Log("msg", "db.head.Appender")
 	h.metrics.activeAppenders.Inc()
 
 	// The head cache might not have a starting point yet. The init appender

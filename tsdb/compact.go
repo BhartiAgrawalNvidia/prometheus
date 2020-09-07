@@ -475,7 +475,7 @@ func (c *LeveledCompactor) Write(dest string, b BlockReader, mint, maxt int64, p
 		MaxTime: maxt,
 	}
 	level.Info(c.logger).Log(
-    		"msg", "in write block",
+    		"msg", "debug - in write block",
     		"mint", meta.MinTime,
     		"maxt", meta.MaxTime,
     		"ulid", meta.ULID,

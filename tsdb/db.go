@@ -684,7 +684,7 @@ func (db *DB) run() {
 					level.Error(db.logger).Log("msg", "compaction failed", "err", err)
 					backoff = exponential(backoff, 1*time.Second, 1*time.Minute)
 				} else {
-				    level.Info(db.logger).Log("msg", "db.run compact backoff")
+				    level.Info(db.logger).Log("msg", "debug - db.run compact backoff")
 					backoff = 0
 				}
 			} else {
@@ -710,7 +710,6 @@ type dbAppender struct {
 }
 
 func (a dbAppender) Commit() error {
-    level.Info(a.db.logger).Log("msg", "db.Commit")
 	err := a.Appender.Commit()
 
 	// We could just run this check every few minutes practically. But for benchmarks
@@ -732,7 +731,7 @@ func (a dbAppender) Commit() error {
 // Old blocks are only deleted on reload based on the new block's parent information.
 // See DB.reload documentation for further information.
 func (db *DB) Compact() (err error) {
-    level.Info(db.logger).Log("msg", "db.Compact")
+    level.Info(db.logger).Log("msg", "debug - db.Compact")
 	db.cmtx.Lock()
 	defer db.cmtx.Unlock()
 	defer func() {
@@ -749,7 +748,7 @@ func (db *DB) Compact() (err error) {
 		default:
 		}
 		if !db.head.compactable() {
-		    level.Info(db.logger).Log("msg", "db.Compact not compactable")
+		    level.Info(db.logger).Log("msg", "debug - db.Compact not compactable")
 			break
 		}
 		mint := db.head.MinTime()
@@ -764,7 +763,7 @@ func (db *DB) Compact() (err error) {
 		// from the block interval here.
 		head := NewRangeHead(db.head, mint, maxt-1)
 		if err := db.compactHead(head); err != nil {
-		    level.Info(db.logger).Log("msg", "db.Compact compactHead called")
+		    level.Info(db.logger).Log("msg", "debug - db.Compact compactHead called")
 			return err
 		}
 	}
@@ -774,7 +773,7 @@ func (db *DB) Compact() (err error) {
 
 // CompactHead compacts the given the RangeHead.
 func (db *DB) CompactHead(head *RangeHead) (err error) {
-    level.Info(db.logger).Log("msg", "db.CompactHead")
+    level.Info(db.logger).Log("msg", "debug - db.CompactHead")
 	db.cmtx.Lock()
 	defer db.cmtx.Unlock()
 
@@ -784,7 +783,7 @@ func (db *DB) CompactHead(head *RangeHead) (err error) {
 // compactHead compacts the given the RangeHead.
 // The compaction mutex should be held before calling this method.
 func (db *DB) compactHead(head *RangeHead) (err error) {
-    level.Info(db.logger).Log("msg", "db.compactHead")
+    level.Info(db.logger).Log("msg", "debug - db.compactHead")
 	// Add +1 millisecond to block maxt because block intervals are half-open: [b.MinTime, b.MaxTime).
 	// Because of this block intervals are always +1 than the total samples it includes.
 	maxt := head.MaxTime() + 1
@@ -817,7 +816,7 @@ func (db *DB) compactHead(head *RangeHead) (err error) {
 // compactBlocks compacts all the eligible on-disk blocks.
 // The compaction mutex should be held before calling this method.
 func (db *DB) compactBlocks() (err error) {
-    level.Info(db.logger).Log("msg", "db.compactBlocks")
+    level.Info(db.logger).Log("msg", "debug - db.compactBlocks")
 	// Check for compactions of multiple blocks.
 	for {
 		plan, err := db.compactor.Plan(db.dir)
@@ -866,7 +865,7 @@ func getBlock(allBlocks []*Block, id ulid.ULID) (*Block, bool) {
 // reload blocks and trigger head truncation if new blocks appeared.
 // Blocks that are obsolete due to replacement or retention will be deleted.
 func (db *DB) reload() (err error) {
-    level.Info(db.logger).Log("msg", "db.reload")
+    level.Info(db.logger).Log("msg", "debug - db.reload")
 	defer func() {
 		if err != nil {
 			db.metrics.reloadsFailed.Inc()
@@ -1312,7 +1311,7 @@ func (db *DB) Snapshot(dir string, withHead bool) error {
 // Querier returns a new querier over the data partition for the given time range.
 // A goroutine must not handle more than one open Querier.
 func (db *DB) Querier(_ context.Context, mint, maxt int64) (storage.Querier, error) {
-    level.Info(db.logger).Log("msg", "db.Querier")
+    level.Info(db.logger).Log("msg", "debug - db.Querier")
 	var blocks []BlockReader
 	var blockMetas []BlockMeta
 
