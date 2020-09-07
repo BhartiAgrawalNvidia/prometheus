@@ -506,6 +506,7 @@ func (w *WAL) setSegment(segment *Segment) error {
 // the page, the remaining bytes will be set to zero and a new page will be started.
 // If clear is true, this is enforced regardless of how many bytes are left in the page.
 func (w *WAL) flushPage(clear bool) error {
+    level.Info(w.logger).Log("msg", "w.flushPage")
 	w.metrics.pageFlushes.Inc()
 
 	p := w.page
@@ -694,6 +695,7 @@ func (w *WAL) Segments() (first, last int, err error) {
 
 // Truncate drops all segments before i.
 func (w *WAL) Truncate(i int) (err error) {
+    level.Info(w.logger).Log("msg", "debug - wal.Truncate")
 	w.metrics.truncateTotal.Inc()
 	defer func() {
 		if err != nil {

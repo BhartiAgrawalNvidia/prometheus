@@ -676,6 +676,7 @@ func (db *DB) run() {
 			default:
 			}
 		case <-db.compactc:
+		    level.Info(db.logger).Log("msg", "debug - db.run compaction triggered")
 			db.metrics.compactionsTriggered.Inc()
 
 			db.autoCompactMtx.Lock()
@@ -715,6 +716,7 @@ func (a dbAppender) Commit() error {
 	// We could just run this check every few minutes practically. But for benchmarks
 	// and high frequency use cases this is the safer way.
 	if a.db.head.compactable() {
+	    level.Info(db.logger).Log("msg", "debug - db.Commit setup compactc")
 		select {
 		case a.db.compactc <- struct{}{}:
 		default:
