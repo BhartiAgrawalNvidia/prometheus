@@ -290,7 +290,7 @@ func NewHead(r prometheus.Registerer, l log.Logger, wal *wal.WAL, chunkRange int
 	if l == nil {
 		l = log.NewNopLogger()
 	}
-    level.Debug(l.logger).Log("msg", "debug - head.NewHead started")
+    level.Debug(l).Log("msg", "debug - head.NewHead started")
 
 	if chunkRange < 1 {
 		return nil, errors.Errorf("invalid chunk range %d", chunkRange)
@@ -917,7 +917,7 @@ type RangeHead struct {
 
 // NewRangeHead returns a *RangeHead.
 func NewRangeHead(head *Head, mint, maxt int64) *RangeHead {
-    level.Debug(head.logger).Log("msg", "head.NewRangeHead", "mint", mint, "maxt", maxTime)
+    level.Debug(head.logger).Log("msg", "head.NewRangeHead", "mint", mint, "maxt", maxt)
 	return &RangeHead{
 		head: head,
 		mint: mint,
