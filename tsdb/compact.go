@@ -373,6 +373,7 @@ func compactBlockMetas(uid ulid.ULID, blocks ...*BlockMeta) *BlockMeta {
 // Compact creates a new block in the compactor's directory from the blocks in the
 // provided directories.
 func (c *LeveledCompactor) Compact(dest string, dirs []string, open []*Block) (uid ulid.ULID, err error) {
+    level.Debug(c.logger).Log("msg", "debug - compact.Compact")
 	var (
 		blocks []BlockReader
 		bs     []*Block
@@ -474,7 +475,7 @@ func (c *LeveledCompactor) Write(dest string, b BlockReader, mint, maxt int64, p
 		MinTime: mint,
 		MaxTime: maxt,
 	}
-	level.Info(c.logger).Log(
+	level.Debug(c.logger).Log(
     		"msg", "debug - in write block",
     		"mint", meta.MinTime,
     		"maxt", meta.MaxTime,
@@ -531,6 +532,7 @@ func (w *instrumentedChunkWriter) WriteChunks(chunks ...chunks.Meta) error {
 // write creates a new block that is the union of the provided blocks into dir.
 // It cleans up all files of the old blocks after completing successfully.
 func (c *LeveledCompactor) write(dest string, meta *BlockMeta, blocks ...BlockReader) (err error) {
+    level.Debug(c.logger).Log("msg", "debug - compact.write")
 	dir := filepath.Join(dest, meta.ULID.String())
 	tmp := dir + ".tmp"
 	var closers []io.Closer
@@ -650,6 +652,7 @@ func (c *LeveledCompactor) write(dest string, meta *BlockMeta, blocks ...BlockRe
 // of the provided blocks. It returns meta information for the new block.
 // It expects sorted blocks input by mint.
 func (c *LeveledCompactor) populateBlock(blocks []BlockReader, meta *BlockMeta, indexw IndexWriter, chunkw ChunkWriter) (err error) {
+    level.Debug(c.logger).Log("msg", "compact.populateBlock")
 	if len(blocks) == 0 {
 		return errors.New("cannot populate block from no readers")
 	}

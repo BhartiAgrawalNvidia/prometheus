@@ -301,6 +301,7 @@ func OpenDBReadOnly(dir string, l log.Logger) (*DBReadOnly, error) {
 // Note that if the read only database is running concurrently with a
 // writable database then writing the WAL to the database directory can race.
 func (db *DBReadOnly) FlushWAL(dir string) (returnErr error) {
+    level.Debug(db.logger).Log("msg", "debug - db.FlushWAL started")
 	blockReaders, err := db.Blocks()
 	if err != nil {
 		return errors.Wrap(err, "read blocks")
@@ -354,6 +355,7 @@ func (db *DBReadOnly) FlushWAL(dir string) (returnErr error) {
 // Querier loads the wal and returns a new querier over the data partition for the given time range.
 // Current implementation doesn't support multiple Queriers.
 func (db *DBReadOnly) Querier(ctx context.Context, mint, maxt int64) (storage.Querier, error) {
+    level.Debug(db.logger).Log("msg", "debug - db.Querier started")
 	select {
 	case <-db.closed:
 		return nil, ErrClosed
@@ -536,6 +538,7 @@ func validateOpts(opts *Options, rngs []int64) (*Options, []int64) {
 }
 
 func open(dir string, l log.Logger, r prometheus.Registerer, opts *Options, rngs []int64) (db *DB, err error) {
+    level.Debug(db.logger).Log("msg", "debug - db.open started")
 	if err := os.MkdirAll(dir, 0777); err != nil {
 		return nil, err
 	}
@@ -658,6 +661,7 @@ func (db *DB) Dir() string {
 }
 
 func (db *DB) run() {
+    level.Debug(db.logger).Log("msg", "debug - db.run started")
 	defer close(db.donec)
 
 	backoff := time.Duration(0)
@@ -676,7 +680,7 @@ func (db *DB) run() {
 			default:
 			}
 		case <-db.compactc:
-		    level.Info(db.logger).Log("msg", "debug - db.run compaction triggered")
+		    level.Debug(db.logger).Log("msg", "debug - db.run compaction triggered")
 			db.metrics.compactionsTriggered.Inc()
 
 			db.autoCompactMtx.Lock()
@@ -685,7 +689,7 @@ func (db *DB) run() {
 					level.Error(db.logger).Log("msg", "compaction failed", "err", err)
 					backoff = exponential(backoff, 1*time.Second, 1*time.Minute)
 				} else {
-				    level.Info(db.logger).Log("msg", "debug - db.run compact done")
+				    level.Debug(db.logger).Log("msg", "debug - db.run compact done")
 					backoff = 0
 				}
 			} else {
@@ -732,7 +736,7 @@ func (a dbAppender) Commit() error {
 // Old blocks are only deleted on reload based on the new block's parent information.
 // See DB.reload documentation for further information.
 func (db *DB) Compact() (err error) {
-    level.Info(db.logger).Log("msg", "debug - db.Compact")
+    level.Debug(db.logger).Log("msg", "debug - db.Compact")
 	db.cmtx.Lock()
 	defer db.cmtx.Unlock()
 	defer func() {
@@ -749,7 +753,7 @@ func (db *DB) Compact() (err error) {
 		default:
 		}
 		if !db.head.compactable() {
-		    level.Info(db.logger).Log("msg", "debug - db.Compact head not compactable")
+		    level.Debug(db.logger).Log("msg", "debug - db.Compact head not compactable")
 			break
 		}
 		mint := db.head.MinTime()
@@ -764,7 +768,7 @@ func (db *DB) Compact() (err error) {
 		// from the block interval here.
 		head := NewRangeHead(db.head, mint, maxt-1)
 		if err := db.compactHead(head); err != nil {
-		    level.Info(db.logger).Log("msg", "debug - db.Compact compactHead called")
+		    level.Debug(db.logger).Log("msg", "debug - db.Compact compactHead called")
 			return err
 		}
 	}
@@ -774,7 +778,7 @@ func (db *DB) Compact() (err error) {
 
 // CompactHead compacts the given the RangeHead.
 func (db *DB) CompactHead(head *RangeHead) (err error) {
-    level.Info(db.logger).Log("msg", "debug - db.CompactHead")
+    level.Debug(db.logger).Log("msg", "debug - db.CompactHead")
 	db.cmtx.Lock()
 	defer db.cmtx.Unlock()
 
@@ -784,7 +788,7 @@ func (db *DB) CompactHead(head *RangeHead) (err error) {
 // compactHead compacts the given the RangeHead.
 // The compaction mutex should be held before calling this method.
 func (db *DB) compactHead(head *RangeHead) (err error) {
-    level.Info(db.logger).Log("msg", "debug - db.compactHead")
+    level.Debug(db.logger).Log("msg", "debug - db.compactHead")
 	// Add +1 millisecond to block maxt because block intervals are half-open: [b.MinTime, b.MaxTime).
 	// Because of this block intervals are always +1 than the total samples it includes.
 	maxt := head.MaxTime() + 1
@@ -795,6 +799,7 @@ func (db *DB) compactHead(head *RangeHead) (err error) {
 
 	runtime.GC()
 
+    level.Debug(db.logger).Log("msg", "debug - db.compactHead will call db.reload which should truncate")
 	if err := db.reload(); err != nil {
 		if err := os.RemoveAll(filepath.Join(db.dir, uid.String())); err != nil {
 			return errors.Wrapf(err, "delete persisted head block after failed db reload:%s", uid)
@@ -802,6 +807,7 @@ func (db *DB) compactHead(head *RangeHead) (err error) {
 		return errors.Wrap(err, "reload blocks")
 	}
 	if (uid == ulid.ULID{}) {
+	    level.Debug(db.logger).Log("msg", "debug - db.compactHead compaction ended in empty block so manually truncate")
 		// Compaction resulted in an empty block.
 		// Head truncating during db.reload() depends on the persisted blocks and
 		// in this case no new block will be persisted so manually truncate the head.
@@ -817,7 +823,7 @@ func (db *DB) compactHead(head *RangeHead) (err error) {
 // compactBlocks compacts all the eligible on-disk blocks.
 // The compaction mutex should be held before calling this method.
 func (db *DB) compactBlocks() (err error) {
-    level.Info(db.logger).Log("msg", "debug - db.compactBlocks")
+    level.Debug(db.logger).Log("msg", "debug - db.compactBlocks")
 	// Check for compactions of multiple blocks.
 	for {
 		plan, err := db.compactor.Plan(db.dir)
@@ -866,7 +872,7 @@ func getBlock(allBlocks []*Block, id ulid.ULID) (*Block, bool) {
 // reload blocks and trigger head truncation if new blocks appeared.
 // Blocks that are obsolete due to replacement or retention will be deleted.
 func (db *DB) reload() (err error) {
-    level.Info(db.logger).Log("msg", "debug - db.reload")
+    level.Debug(db.logger).Log("msg", "debug - db.reload")
 	defer func() {
 		if err != nil {
 			db.metrics.reloadsFailed.Inc()
@@ -1312,7 +1318,7 @@ func (db *DB) Snapshot(dir string, withHead bool) error {
 // Querier returns a new querier over the data partition for the given time range.
 // A goroutine must not handle more than one open Querier.
 func (db *DB) Querier(_ context.Context, mint, maxt int64) (storage.Querier, error) {
-    level.Info(db.logger).Log("msg", "debug - db.Querier")
+    level.Debug(db.logger).Log("msg", "debug - db.Querier")
 	var blocks []BlockReader
 	var blockMetas []BlockMeta
 
@@ -1394,6 +1400,7 @@ func (db *DB) Delete(mint, maxt int64, ms ...*labels.Matcher) error {
 
 // CleanTombstones re-writes any blocks with tombstones.
 func (db *DB) CleanTombstones() (err error) {
+    level.Debug(db.logger).Log("msg", "debug - db.CleanTombstones ")
 	db.cmtx.Lock()
 	defer db.cmtx.Unlock()
 
@@ -1425,6 +1432,7 @@ func (db *DB) CleanTombstones() (err error) {
 			newUIDs = append(newUIDs, *uid)
 		}
 	}
+	level.Debug(db.logger).Log("msg", "debug - db.CleanTombstones will call reload")
 	return errors.Wrap(db.reload(), "reload blocks")
 }
 

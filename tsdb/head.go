@@ -290,6 +290,8 @@ func NewHead(r prometheus.Registerer, l log.Logger, wal *wal.WAL, chunkRange int
 	if l == nil {
 		l = log.NewNopLogger()
 	}
+    level.Debug(l.logger).Log("msg", "debug - head.NewHead started")
+
 	if chunkRange < 1 {
 		return nil, errors.Errorf("invalid chunk range %d", chunkRange)
 	}
@@ -342,7 +344,7 @@ func (h *Head) processWALSamples(
 	input <-chan []record.RefSample, output chan<- []record.RefSample,
 ) (unknownRefs uint64) {
 	defer close(output)
-
+    level.Debug(h.logger).Log("msg", "debug - head.processWALSamples started")
 	// Mitigate lock contention in getByID.
 	refSeries := map[uint64]*memSeries{}
 
@@ -402,6 +404,8 @@ func (h *Head) updateMinMaxTime(mint, maxt int64) {
 }
 
 func (h *Head) loadWAL(r *wal.Reader, multiRef map[uint64]uint64, mmappedChunks map[uint64][]*mmappedChunk) (err error) {
+    level.Debug(h.logger).Log("msg", "debug - head.loadWAL started")
+
 	// Track number of samples that referenced a series we don't know about
 	// for error reporting.
 	var unknownRefs uint64
@@ -635,7 +639,7 @@ Outer:
 // limits the ingested samples to the head min valid time.
 func (h *Head) Init(minValidTime int64) error {
 	h.minValidTime = minValidTime
-	level.Info(h.logger).Log("msg", "debug - db.head.Init", "minValidTime", minValidTime)
+	level.Debug(h.logger).Log("msg", "debug - db.head.Init", "minValidTime", minValidTime)
 	defer h.postings.EnsureOrder()
 	defer h.gc() // After loading the wal remove the obsolete data from the head.
 
@@ -762,7 +766,7 @@ func (h *Head) removeCorruptedMmappedChunks(err error) map[uint64][]*mmappedChun
 
 // Truncate removes old data before mint from the head.
 func (h *Head) Truncate(mint int64) (err error) {
-    level.Info(h.logger).Log("msg", "debug - db.head.Truncate")
+    level.Info(h.logger).Log("msg", "debug - db.head.Truncate", "mint: ", mint)
 	defer func() {
 		if err != nil {
 			h.metrics.headTruncateFail.Inc()
@@ -878,6 +882,7 @@ func (h *Head) Truncate(mint int64) (err error) {
 // for a completely fresh head with an empty WAL.
 // Returns true if the initialization took an effect.
 func (h *Head) initTime(t int64) (initialized bool) {
+    level.Debug(h.logger).Log("msg", "head.initTime")
 	if !atomic.CompareAndSwapInt64(&h.minTime, math.MaxInt64, t) {
 		return false
 	}
@@ -912,6 +917,7 @@ type RangeHead struct {
 
 // NewRangeHead returns a *RangeHead.
 func NewRangeHead(head *Head, mint, maxt int64) *RangeHead {
+    level.Debug(head.logger).Log("msg", "head.NewRangeHead", "mint", mint, "maxt", maxTime)
 	return &RangeHead{
 		head: head,
 		mint: mint,
@@ -1241,6 +1247,7 @@ func (a *headAppender) Rollback() error {
 // Delete all samples in the range of [mint, maxt] for series that satisfy the given
 // label matchers.
 func (h *Head) Delete(mint, maxt int64, ms ...*labels.Matcher) error {
+    level.Debug(h.logger).Log("msg", "head.Delete", "mint", mint, "maxt", maxt)
 	// Do not delete anything beyond the currently valid range.
 	mint, maxt = clampInterval(mint, maxt, h.MinTime(), h.MaxTime())
 
@@ -1285,7 +1292,7 @@ func (h *Head) Delete(mint, maxt int64, ms ...*labels.Matcher) error {
 func (h *Head) gc() {
 	// Only data strictly lower than this timestamp must be deleted.
 	mint := h.MinTime()
-
+    level.Debug(h.logger).Log("msg", "head.gc", "mint", mint)
 	// Drop old chunks and remember series IDs and hashes if they can be
 	// deleted entirely.
 	deleted, chunksRemoved := h.series.gc(mint)
