@@ -538,7 +538,7 @@ func validateOpts(opts *Options, rngs []int64) (*Options, []int64) {
 }
 
 func open(dir string, l log.Logger, r prometheus.Registerer, opts *Options, rngs []int64) (db *DB, err error) {
-    level.Debug(db.logger).Log("msg", "debug - db.open started")
+    level.Debug(l).Log("msg", "debug - db.open started")
 	if err := os.MkdirAll(dir, 0777); err != nil {
 		return nil, err
 	}
