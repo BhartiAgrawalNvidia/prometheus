@@ -647,6 +647,7 @@ func open(dir string, l log.Logger, r prometheus.Registerer, opts *Options, rngs
 // StartTime implements the Storage interface.
 func (db *DB) StartTime() (int64, error) {
 	db.mtx.RLock()
+	level.Info(db.logger).Log("msg", "debug - db.StartTime in mtx lock")
 	defer db.mtx.RUnlock()
 
 	if len(db.blocks) > 0 {
@@ -737,7 +738,7 @@ func (a dbAppender) Commit() error {
 // See DB.reload documentation for further information.
 func (db *DB) Compact() (err error) {
 	db.cmtx.Lock()
-	level.Debug(db.logger).Log("msg", "debug - db.Compact in lock")
+	level.Debug(db.logger).Log("msg", "debug - db.Compact in cmtx lock")
 	defer db.cmtx.Unlock()
 	defer func() {
 		if err != nil {
@@ -780,6 +781,7 @@ func (db *DB) Compact() (err error) {
 func (db *DB) CompactHead(head *RangeHead) (err error) {
 	level.Debug(db.logger).Log("msg", "debug - db.CompactHead")
 	db.cmtx.Lock()
+	level.Debug(db.logger).Log("msg", "debug - db.CompactHead in cmtx lock")
 	defer db.cmtx.Unlock()
 
 	return db.compactHead(head)
@@ -886,7 +888,7 @@ func (db *DB) reload() (err error) {
 	}
 
 	deletable := db.deletableBlocks(loadable)
-	level.Debug(db.logger).Log("msg", "debug - db.reload found loadable blocks", len(loadable), "deletable blocks", len(deletable), "corrupted blocks", len(corrupted))
+	level.Debug(db.logger).Log("msg", "debug - db.reload found ", "loadable blocks", len(loadable), "deletable blocks", len(deletable), "corrupted blocks", len(corrupted))
 
 	// Corrupted blocks that have been superseded by a loadable block can be safely ignored.
 	// This makes it resilient against the process crashing towards the end of a compaction.
@@ -940,6 +942,7 @@ func (db *DB) reload() (err error) {
 
 	// Swap new blocks first for subsequently created readers to be seen.
 	db.mtx.Lock()
+	level.Debug(db.logger).Log("msg", "debug - db.reload in mtx lock ")
 	oldBlocks := db.blocks
 	db.blocks = loadable
 	db.mtx.Unlock()
@@ -1286,9 +1289,11 @@ func (db *DB) Snapshot(dir string, withHead bool) error {
 	}
 
 	db.cmtx.Lock()
+	level.Info(db.logger).Log("msg", "debug - db.Snapshot in cmtx lock")
 	defer db.cmtx.Unlock()
 
 	db.mtx.RLock()
+	level.Info(db.logger).Log("msg", "debug - db.Snapshot in mtx lock")
 	defer db.mtx.RUnlock()
 
 	for _, b := range db.blocks {
@@ -1325,6 +1330,7 @@ func (db *DB) Querier(_ context.Context, mint, maxt int64) (storage.Querier, err
 	var blockMetas []BlockMeta
 
 	db.mtx.RLock()
+	level.Debug(db.logger).Log("msg", "debug - db.Querier in mtx lock")
 	defer db.mtx.RUnlock()
 
 	for _, b := range db.blocks {
@@ -1380,6 +1386,7 @@ func rangeForTimestamp(t int64, width int64) (maxt int64) {
 // Delete implements deletion of metrics. It only has atomicity guarantees on a per-block basis.
 func (db *DB) Delete(mint, maxt int64, ms ...*labels.Matcher) error {
 	db.cmtx.Lock()
+	level.Debug(db.logger).Log("msg", "debug - db.Delete in cmtx lock")
 	defer db.cmtx.Unlock()
 
 	var g errgroup.Group
@@ -1404,6 +1411,7 @@ func (db *DB) Delete(mint, maxt int64, ms ...*labels.Matcher) error {
 func (db *DB) CleanTombstones() (err error) {
 	level.Debug(db.logger).Log("msg", "debug - db.CleanTombstones ")
 	db.cmtx.Lock()
+	level.Debug(db.logger).Log("msg", "debug - db.CleanTombstones in cmtx lock")
 	defer db.cmtx.Unlock()
 
 	start := time.Now()
