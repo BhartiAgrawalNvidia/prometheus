@@ -969,7 +969,7 @@ func (db *DB) reload() (err error) {
 	}
 
 	maxt := loadable[len(loadable)-1].Meta().MaxTime
-	level.Debug(l).Log("msg", "debug - db.reload maxT ", maxt)
+	level.Debug(db.logger).Log("msg", "debug - db.reload maxT ", maxt)
 
 	return errors.Wrap(db.head.Truncate(maxt), "head truncate failed")
 }
