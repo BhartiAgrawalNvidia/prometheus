@@ -764,9 +764,9 @@ func (db *DB) Compact() (err error) {
 		// from the block interval here.
 		head := NewRangeHead(db.head, mint, maxt-1)
 		if err := db.compactHead(head); err != nil {
-			level.Debug(db.logger).Log("msg", "debug - db.Compact compactHead done")
 			return err
 		}
+		level.Debug(db.logger).Log("msg", "debug - db.Compact compactHead done")
 	}
 
 	return db.compactBlocks()
@@ -776,7 +776,6 @@ func (db *DB) Compact() (err error) {
 func (db *DB) CompactHead(head *RangeHead) (err error) {
 	db.cmtx.Lock()
 	defer db.cmtx.Unlock()
-
 	return db.compactHead(head)
 }
 
@@ -801,6 +800,7 @@ func (db *DB) compactHead(head *RangeHead) (err error) {
 		}
 		return errors.Wrap(err, "reload blocks")
 	}
+	level.Debug(db.logger).Log("msg", "debug - db.compactHead db.reload done")
 	if (uid == ulid.ULID{}) {
 		level.Debug(db.logger).Log("msg", "debug - db.compactHead compaction ended in empty block so manually truncate")
 		// Compaction resulted in an empty block.
@@ -954,6 +954,7 @@ func (db *DB) reload() (err error) {
 	}
 
 	if err := db.deleteBlocks(deletable); err != nil {
+		level.Error(db.logger).Log("msg", "debug - error deleting blocs ", "err", err)
 		return err
 	}
 
@@ -965,7 +966,7 @@ func (db *DB) reload() (err error) {
 	}
 
 	maxt := loadable[len(loadable)-1].Meta().MaxTime
-	level.Debug(db.logger).Log("msg", "debug - db.reload maxT ", maxt)
+	level.Debug(db.logger).Log("msg", "debug - db.reload calling truncation", "maxT", maxt)
 
 	return errors.Wrap(db.head.Truncate(maxt), "head truncate failed")
 }
@@ -1077,6 +1078,7 @@ func (db *DB) beyondSizeRetention(blocks []*Block) (deletable map[ulid.ULID]*Blo
 // When the map contains a non nil block object it means it is loaded in memory
 // so needs to be closed first as it might need to wait for pending readers to complete.
 func (db *DB) deleteBlocks(blocks map[ulid.ULID]*Block) error {
+	level.Debug(db.logger).Log("msg", "debug - db.deleteBlocks ")
 	for ulid, block := range blocks {
 		if block != nil {
 			if err := block.Close(); err != nil {
@@ -1274,6 +1276,7 @@ func (db *DB) EnableCompactions() {
 // Snapshot writes the current data to the directory. If withHead is set to true it
 // will create a new block containing all data that's currently in the memory buffer/WAL.
 func (db *DB) Snapshot(dir string, withHead bool) error {
+	level.Debug(db.logger).Log("msg", "debug - db.Snapshot")
 	if dir == db.dir {
 		return errors.Errorf("cannot snapshot into base directory")
 	}
@@ -1375,6 +1378,7 @@ func rangeForTimestamp(t int64, width int64) (maxt int64) {
 
 // Delete implements deletion of metrics. It only has atomicity guarantees on a per-block basis.
 func (db *DB) Delete(mint, maxt int64, ms ...*labels.Matcher) error {
+	level.Debug(db.logger).Log("msg", "debug - db.Delete ")
 	db.cmtx.Lock()
 	defer db.cmtx.Unlock()
 
