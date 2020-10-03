@@ -694,7 +694,6 @@ func (w *WAL) Segments() (first, last int, err error) {
 
 // Truncate drops all segments before i.
 func (w *WAL) Truncate(i int) (err error) {
-    level.Debug(w.logger).Log("msg", "debug - wal.Truncate")
 	w.metrics.truncateTotal.Inc()
 	defer func() {
 		if err != nil {

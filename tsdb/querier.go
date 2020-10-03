@@ -14,6 +14,8 @@
 package tsdb
 
 import (
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -140,6 +142,7 @@ func (q *verticalQuerier) sel(sortSeries bool, hints *storage.SelectHints, qs []
 
 // NewBlockQuerier returns a querier against the reader.
 func NewBlockQuerier(b BlockReader, mint, maxt int64) (storage.Querier, error) {
+	level.Debug(log.NewNopLogger()).Log("msg", "debug - querier.NewBlockQuerier will create a chunk and add WaitGroup")
 	indexr, err := b.Index()
 	if err != nil {
 		return nil, errors.Wrapf(err, "open index reader")

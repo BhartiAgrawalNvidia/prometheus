@@ -39,11 +39,11 @@ import (
 	"github.com/prometheus/prometheus/tsdb/chunkenc"
 	tsdb_errors "github.com/prometheus/prometheus/tsdb/errors"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
-	"github.com/prometheus/prometheus/tsdb/wal"
-	"golang.org/x/sync/errgroup"
 
 	// Load the package into main to make sure minium Go version is met.
 	_ "github.com/prometheus/prometheus/tsdb/goversion"
+	"github.com/prometheus/prometheus/tsdb/wal"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -301,7 +301,6 @@ func OpenDBReadOnly(dir string, l log.Logger) (*DBReadOnly, error) {
 // Note that if the read only database is running concurrently with a
 // writable database then writing the WAL to the database directory can race.
 func (db *DBReadOnly) FlushWAL(dir string) (returnErr error) {
-	level.Debug(db.logger).Log("msg", "debug - db.FlushWAL started")
 	blockReaders, err := db.Blocks()
 	if err != nil {
 		return errors.Wrap(err, "read blocks")
@@ -355,7 +354,6 @@ func (db *DBReadOnly) FlushWAL(dir string) (returnErr error) {
 // Querier loads the wal and returns a new querier over the data partition for the given time range.
 // Current implementation doesn't support multiple Queriers.
 func (db *DBReadOnly) Querier(ctx context.Context, mint, maxt int64) (storage.Querier, error) {
-	level.Debug(db.logger).Log("msg", "debug - db.Querier started")
 	select {
 	case <-db.closed:
 		return nil, ErrClosed
@@ -538,7 +536,6 @@ func validateOpts(opts *Options, rngs []int64) (*Options, []int64) {
 }
 
 func open(dir string, l log.Logger, r prometheus.Registerer, opts *Options, rngs []int64) (db *DB, err error) {
-	level.Debug(l).Log("msg", "debug - db.open started")
 	if err := os.MkdirAll(dir, 0777); err != nil {
 		return nil, err
 	}
@@ -661,7 +658,6 @@ func (db *DB) Dir() string {
 }
 
 func (db *DB) run() {
-	level.Debug(db.logger).Log("msg", "debug - db.run started")
 	defer close(db.donec)
 
 	backoff := time.Duration(0)
@@ -766,7 +762,6 @@ func (db *DB) Compact() (err error) {
 		if err := db.compactHead(head); err != nil {
 			return err
 		}
-		level.Debug(db.logger).Log("msg", "debug - db.Compact compactHead done")
 	}
 
 	return db.compactBlocks()
@@ -793,16 +788,13 @@ func (db *DB) compactHead(head *RangeHead) (err error) {
 
 	runtime.GC()
 
-	level.Debug(db.logger).Log("msg", "debug - db.compactHead will call db.reload which should truncate")
 	if err := db.reload(); err != nil {
 		if err := os.RemoveAll(filepath.Join(db.dir, uid.String())); err != nil {
 			return errors.Wrapf(err, "delete persisted head block after failed db reload:%s", uid)
 		}
 		return errors.Wrap(err, "reload blocks")
 	}
-	level.Debug(db.logger).Log("msg", "debug - db.compactHead db.reload done")
 	if (uid == ulid.ULID{}) {
-		level.Debug(db.logger).Log("msg", "debug - db.compactHead compaction ended in empty block so manually truncate")
 		// Compaction resulted in an empty block.
 		// Head truncating during db.reload() depends on the persisted blocks and
 		// in this case no new block will be persisted so manually truncate the head.
@@ -876,12 +868,10 @@ func (db *DB) reload() (err error) {
 
 	loadable, corrupted, err := openBlocks(db.logger, db.dir, db.blocks, db.chunkPool)
 	if err != nil {
-		level.Error(db.logger).Log("msg", "debug - db.reload error opening blocks", "err", err)
 		return err
 	}
 
 	deletable := db.deletableBlocks(loadable)
-	level.Debug(db.logger).Log("msg", "debug - db.reload blocks found ", "loadable blocks", len(loadable), "deletable blocks", len(deletable), "corrupted blocks", len(corrupted))
 
 	// Corrupted blocks that have been superseded by a loadable block can be safely ignored.
 	// This makes it resilient against the process crashing towards the end of a compaction.
@@ -938,7 +928,6 @@ func (db *DB) reload() (err error) {
 	oldBlocks := db.blocks
 	db.blocks = loadable
 	db.mtx.Unlock()
-	level.Debug(db.logger).Log("msg", "debug - db.reload after swapping in new blocks ")
 	blockMetas := make([]BlockMeta, 0, len(loadable))
 	for _, b := range loadable {
 		blockMetas = append(blockMetas, b.Meta())
@@ -954,19 +943,16 @@ func (db *DB) reload() (err error) {
 	}
 
 	if err := db.deleteBlocks(deletable); err != nil {
-		level.Error(db.logger).Log("msg", "debug - error deleting blocs ", "err", err)
 		return err
 	}
 
 	// Garbage collect data in the head if the most recent persisted block
 	// covers data of its current time range.
 	if len(loadable) == 0 {
-		level.Debug(db.logger).Log("msg", "debug - db.reload loadable chunks is 0 ")
 		return nil
 	}
 
 	maxt := loadable[len(loadable)-1].Meta().MaxTime
-	level.Debug(db.logger).Log("msg", "debug - db.reload calling truncation", "maxT", maxt)
 
 	return errors.Wrap(db.head.Truncate(maxt), "head truncate failed")
 }
@@ -1078,7 +1064,6 @@ func (db *DB) beyondSizeRetention(blocks []*Block) (deletable map[ulid.ULID]*Blo
 // When the map contains a non nil block object it means it is loaded in memory
 // so needs to be closed first as it might need to wait for pending readers to complete.
 func (db *DB) deleteBlocks(blocks map[ulid.ULID]*Block) error {
-	level.Debug(db.logger).Log("msg", "debug - db.deleteBlocks ")
 	for ulid, block := range blocks {
 		if block != nil {
 			if err := block.Close(); err != nil {
@@ -1276,7 +1261,6 @@ func (db *DB) EnableCompactions() {
 // Snapshot writes the current data to the directory. If withHead is set to true it
 // will create a new block containing all data that's currently in the memory buffer/WAL.
 func (db *DB) Snapshot(dir string, withHead bool) error {
-	level.Debug(db.logger).Log("msg", "debug - db.Snapshot")
 	if dir == db.dir {
 		return errors.Errorf("cannot snapshot into base directory")
 	}
@@ -1319,7 +1303,7 @@ func (db *DB) Snapshot(dir string, withHead bool) error {
 // Querier returns a new querier over the data partition for the given time range.
 // A goroutine must not handle more than one open Querier.
 func (db *DB) Querier(_ context.Context, mint, maxt int64) (storage.Querier, error) {
-	level.Debug(db.logger).Log("msg", "debug - db.Querier")
+	level.Debug(db.logger).Log("msg", "debug - db.Querier ")
 	var blocks []BlockReader
 	var blockMetas []BlockMeta
 
@@ -1402,7 +1386,6 @@ func (db *DB) Delete(mint, maxt int64, ms ...*labels.Matcher) error {
 
 // CleanTombstones re-writes any blocks with tombstones.
 func (db *DB) CleanTombstones() (err error) {
-	level.Debug(db.logger).Log("msg", "debug - db.CleanTombstones ")
 	db.cmtx.Lock()
 	defer db.cmtx.Unlock()
 
@@ -1434,7 +1417,6 @@ func (db *DB) CleanTombstones() (err error) {
 			newUIDs = append(newUIDs, *uid)
 		}
 	}
-	level.Debug(db.logger).Log("msg", "debug - db.CleanTombstones will call reload")
 	return errors.Wrap(db.reload(), "reload blocks")
 }
 

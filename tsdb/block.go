@@ -328,6 +328,7 @@ func (pb *Block) Close() error {
 	pb.closing = true
 	pb.mtx.Unlock()
 
+	level.Debug(pb.logger).Log("msg", "debug - block.Close waiting on WaitGroup pending Readers")
 	pb.pendingReaders.Wait()
 
 	var merr tsdb_errors.MultiError
@@ -370,12 +371,14 @@ func (pb *Block) startRead() error {
 	if pb.closing {
 		return ErrClosing
 	}
+	level.Debug(log.NewNopLogger()).Log("msg", "debug - block.startRead will add wg for Readers")
 	pb.pendingReaders.Add(1)
 	return nil
 }
 
 // Index returns a new IndexReader against the block data.
 func (pb *Block) Index() (IndexReader, error) {
+	level.Debug(pb.logger).Log("msg", "debug - block.Index will add a Reader")
 	if err := pb.startRead(); err != nil {
 		return nil, err
 	}
@@ -384,6 +387,7 @@ func (pb *Block) Index() (IndexReader, error) {
 
 // Chunks returns a new ChunkReader against the block data.
 func (pb *Block) Chunks() (ChunkReader, error) {
+	level.Debug(pb.logger).Log("msg", "debug - block.Chunks will add a Reader")
 	if err := pb.startRead(); err != nil {
 		return nil, err
 	}
@@ -392,6 +396,7 @@ func (pb *Block) Chunks() (ChunkReader, error) {
 
 // Tombstones returns a new TombstoneReader against the block data.
 func (pb *Block) Tombstones() (tombstones.Reader, error) {
+	level.Debug(pb.logger).Log("msg", "debug - block.Tombstones will add a Reader")
 	if err := pb.startRead(); err != nil {
 		return nil, err
 	}
@@ -456,6 +461,7 @@ func (r blockIndexReader) LabelNames() ([]string, error) {
 }
 
 func (r blockIndexReader) Close() error {
+	level.Debug(log.NewNopLogger()).Log("msg", "debug - block.Close will mark wg done for Index Readers")
 	r.b.pendingReaders.Done()
 	return nil
 }
@@ -466,6 +472,7 @@ type blockTombstoneReader struct {
 }
 
 func (r blockTombstoneReader) Close() error {
+	level.Debug(log.NewNopLogger()).Log("msg", "debug - block.Close will mark wg done for Tombstone Readers")
 	r.b.pendingReaders.Done()
 	return nil
 }
@@ -476,6 +483,7 @@ type blockChunkReader struct {
 }
 
 func (r blockChunkReader) Close() error {
+	level.Debug(log.NewNopLogger()).Log("msg", "debug - block.Close will mark wg done for Chunk Readers")
 	r.b.pendingReaders.Done()
 	return nil
 }

@@ -290,8 +290,6 @@ func NewHead(r prometheus.Registerer, l log.Logger, wal *wal.WAL, chunkRange int
 	if l == nil {
 		l = log.NewNopLogger()
 	}
-	level.Debug(l).Log("msg", "debug - head.NewHead started")
-
 	if chunkRange < 1 {
 		return nil, errors.Errorf("invalid chunk range %d", chunkRange)
 	}
@@ -344,7 +342,7 @@ func (h *Head) processWALSamples(
 	input <-chan []record.RefSample, output chan<- []record.RefSample,
 ) (unknownRefs uint64) {
 	defer close(output)
-	level.Debug(h.logger).Log("msg", "debug - head.processWALSamples started")
+
 	// Mitigate lock contention in getByID.
 	refSeries := map[uint64]*memSeries{}
 
@@ -404,8 +402,6 @@ func (h *Head) updateMinMaxTime(mint, maxt int64) {
 }
 
 func (h *Head) loadWAL(r *wal.Reader, multiRef map[uint64]uint64, mmappedChunks map[uint64][]*mmappedChunk) (err error) {
-	level.Debug(h.logger).Log("msg", "debug - head.loadWAL started")
-
 	// Track number of samples that referenced a series we don't know about
 	// for error reporting.
 	var unknownRefs uint64
@@ -639,7 +635,6 @@ Outer:
 // limits the ingested samples to the head min valid time.
 func (h *Head) Init(minValidTime int64) error {
 	h.minValidTime = minValidTime
-	level.Debug(h.logger).Log("msg", "debug - db.head.Init", "minValidTime", minValidTime)
 	defer h.postings.EnsureOrder()
 	defer h.gc() // After loading the wal remove the obsolete data from the head.
 
@@ -782,7 +777,6 @@ func (h *Head) Truncate(mint int64) (err error) {
 
 	// Ensure that max time is at least as high as min time.
 	for h.MaxTime() < mint {
-		level.Debug(h.logger).Log("msg", "debug - db.Truncate maxT less then mint. Will swap. ")
 		atomic.CompareAndSwapInt64(&h.maxTime, h.MaxTime(), mint)
 	}
 
@@ -801,7 +795,6 @@ func (h *Head) Truncate(mint int64) (err error) {
 	h.metrics.gcDuration.Observe(time.Since(start).Seconds())
 
 	// Truncate the chunk m-mapper.
-	level.Debug(h.logger).Log("msg", "debug - db.Truncate calling chunkDiskMapper truncate ")
 	if err := h.chunkDiskMapper.Truncate(mint); err != nil {
 		return errors.Wrap(err, "truncate chunks.HeadReadWriter")
 	}
@@ -817,7 +810,6 @@ func (h *Head) Truncate(mint int64) (err error) {
 	}
 	// Start a new segment, so low ingestion volume TSDB don't have more WAL than
 	// needed.
-	level.Debug(h.logger).Log("msg", "debug - db.Truncate create next wal segment. ")
 	err = h.wal.NextSegment()
 	if err != nil {
 		return errors.Wrap(err, "next segment")
@@ -844,7 +836,6 @@ func (h *Head) Truncate(mint int64) (err error) {
 		h.deletedMtx.Unlock()
 		return ok
 	}
-	level.Debug(h.logger).Log("msg", "debug - db.Truncate checkpointing. ")
 	h.metrics.checkpointCreationTotal.Inc()
 	if _, err = wal.Checkpoint(h.wal, first, last, keep, mint); err != nil {
 		h.metrics.checkpointCreationFail.Inc()
@@ -859,7 +850,6 @@ func (h *Head) Truncate(mint int64) (err error) {
 
 	// The checkpoint is written and segments before it is truncated, so we no
 	// longer need to track deleted series that are before it.
-	level.Debug(h.logger).Log("msg", "debug - db.Truncate deleting older deleted series segments. ")
 	h.deletedMtx.Lock()
 	for ref, segment := range h.deleted {
 		if segment < first {
