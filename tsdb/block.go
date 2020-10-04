@@ -378,7 +378,6 @@ func (pb *Block) startRead() error {
 
 // Index returns a new IndexReader against the block data.
 func (pb *Block) Index() (IndexReader, error) {
-	level.Debug(pb.logger).Log("msg", "debug - block.Index will add a Reader")
 	if err := pb.startRead(); err != nil {
 		return nil, err
 	}
@@ -387,7 +386,6 @@ func (pb *Block) Index() (IndexReader, error) {
 
 // Chunks returns a new ChunkReader against the block data.
 func (pb *Block) Chunks() (ChunkReader, error) {
-	level.Debug(pb.logger).Log("msg", "debug - block.Chunks will add a Reader")
 	if err := pb.startRead(); err != nil {
 		return nil, err
 	}
@@ -396,7 +394,6 @@ func (pb *Block) Chunks() (ChunkReader, error) {
 
 // Tombstones returns a new TombstoneReader against the block data.
 func (pb *Block) Tombstones() (tombstones.Reader, error) {
-	level.Debug(pb.logger).Log("msg", "debug - block.Tombstones will add a Reader")
 	if err := pb.startRead(); err != nil {
 		return nil, err
 	}
